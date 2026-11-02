@@ -14,7 +14,7 @@ Report privately through GitHub instead: [Report a vulnerability](https://github
 - steps to reproduce, with device model, Android/HyperOS version and app version
 - a proof of concept, if you have one
 
-You'll get a reply within 7 days. Once a fix is released, the advisory is published with credit to you, unless you'd rather stay anonymous.
+Once a fix is released, the advisory is published with credit to you, unless you'd rather stay anonymous.
 
 ## Scope
 
