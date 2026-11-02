@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to (re)publish, e.g. v0.0.1
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::SIGNING_KEYSTORE_BASE64 secret is not set. Releases must be signed with the release key."
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "SIGNING_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Check no INTERNET permission
+        run: |
+          AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
+          $AAPT dump permissions app/build/outputs/apk/release/app-release.apk | tee perms.txt
+          if grep -q "android.permission.INTERNET" perms.txt; then echo "INTERNET permission found"; exit 1; fi
+
+      - name: Package
+        run: |
+          APK="StatusBarLock-${TAG}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$APK"
+          sha256sum "$APK" > "$APK.sha256"
+          rm -f "$RUNNER_TEMP/release.jks"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES=".github/release-notes/${TAG}.md"
+          [ -f "$NOTES" ] || NOTES=/dev/null
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" StatusBarLock-*.apk* --clobber
+          else
+            gh release create "$TAG" StatusBarLock-*.apk* --title "Status Bar Lock ${TAG}" --notes-file "$NOTES" --latest
+          fi
