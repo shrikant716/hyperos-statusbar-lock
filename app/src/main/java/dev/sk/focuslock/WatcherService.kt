@@ -95,7 +95,7 @@ class WatcherService : Service() {
             fg != null && fg in allow -> true
             fg != null && fg in pass -> locked // overlay on top of the game: keep state
             // Our own floating window over a game that is still resumed underneath.
-            fg == packageName -> locked && detector.anyResumed(allow)
+            fg == packageName -> detector.anyResumed(allow)
             else -> false
         }
         val want = if (wantLock) 0 else 1
