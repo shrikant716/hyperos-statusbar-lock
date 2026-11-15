@@ -133,7 +133,6 @@ Avoid rebooting while the value is `0`. The app resets it early in boot, but the
 ## Known limits
 
 - While locked, the value is phone-wide. It only changes while your game is in front, but side swipes and notification/Quick Settings behaviour in that state aren't fully tested.
-- After a partial bottom swipe that doesn't leave the game, the top edge can peek again until you reopen the game.
 - Built for HyperOS. Other Android skins may handle `user_setup_complete` differently.
 
 ## License
